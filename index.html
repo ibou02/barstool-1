@@ -9,6 +9,7 @@
     <script type="text/javascript" src="js/state.js"></script>
     <link rel="stylesheet" href="style/main.css"/>
   </head>
+
   <body ng-app="state">
     <div ng-controller="InteractionCtrl">
 
@@ -32,7 +33,9 @@
             <button ng-click="setTransmitterUrl()">Update</button>
           </form>
           <h1>RSSI in Time</h1>
-          <p> Tracking {{transmitterId}} <p>
+          <p> Tracking {{transmitterId}} </p> <button ng-click="toggle()"> {{receiverId}}</button> 
+          <button ng-click="toggle2()"> {{receiverId2}}</button>
+
           <div style="padding:30px" linear-chart chart-data="rssiSamples"></div>
         </div>
 
