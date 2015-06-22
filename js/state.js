@@ -115,6 +115,9 @@ angular.module('state', ['btford.socket-io'])
     $scope.transmitterId = DEFAULT_TRANSMITTER_ID;
     $scope.setTransmitterUrl = setTransmitterUrl;
     $scope.receiverId = DEFAULT_RECEIVER_ID;
+    $scope.receiverId2 = DEFAULT_RECEIVER_ID2;
+    $scope.showReceiverId = true;
+    $scope.showReceiverId2 = true;
     $scope.setReceiverUrl = setReceiverUrl;
     $scope.rssiSamples = {};
     $scope.rssiSamples[DEFAULT_RECEIVER_ID] = [ { seconds: 0, rssi: 0 } ];
@@ -122,6 +125,14 @@ angular.module('state', ['btford.socket-io'])
     $scope.rssiSeconds = 0;
     setTransmitterUrl();
     //setReceiverUrl();
+
+    $scope.toggle = function() {
+      $scope.showReceiverId = !$scope.showReceiverId;
+    }
+
+    $scope.toggle2 = function() {
+      $scope.showReceiverId2 = !$scope.showReceiverId2;
+    }
 
     function setTransmitterUrl() {
       Samples.setUrl($scope.apiRoot + WHEREIS_QUERY + $scope.transmitterId);
@@ -135,11 +146,12 @@ angular.module('state', ['btford.socket-io'])
       var sample = Samples.getLatest();
       var seconds = $scope.rssiSeconds;
       var rssi = sample[$scope.transmitterId].radioDecodings[0].rssi;
-      var rssi2 = sample[$scope.transmitterId].radioDecodings[1].rssi;
+      if(sample[$scope.transmitterId].radioDecodings[3]) {rssi2 = sample[$scope.transmitterId].radioDecodings[3].rssi;}
+      else {rssi2 = 0}
       $scope.rssiSeconds += REFRESH_SECONDS;
       $scope.rssiSamples[DEFAULT_RECEIVER_ID].push( { seconds: seconds, rssi: rssi } );
       $scope.rssiSamples[DEFAULT_RECEIVER_ID2].push( { seconds: seconds, rssi: rssi2 } );
-      console.log(JSON.stringify(rssi) + JSON.stringify(rssi));
+      console.log(JSON.stringify(rssi) + JSON.stringify(rssi2));
       if($scope.rssiSamples[DEFAULT_RECEIVER_ID].length > MAX_NUMBER_OF_SAMPLES) {
         $scope.rssiSamples[DEFAULT_RECEIVER_ID].shift();
         $scope.rssiSamples[DEFAULT_RECEIVER_ID2].shift();
@@ -241,10 +253,15 @@ angular.module('state', ['btford.socket-io'])
             setChartParameters();
             svg.selectAll("g.y.axis").call(yAxisGen);
             svg.selectAll("g.x.axis").call(xAxisGen);
-            svg.selectAll("." + pathClass)
-              .attr({ d: lineFun(dataToPlot) });
-            svg.selectAll("." + pathClass_2)
-              .attr({ d: lineFun2(dataToPlot2) });
+            
+            if(scope.showReceiverId === true) {svg.selectAll("." + pathClass)
+              .attr({ d: lineFun(dataToPlot) }); }
+            else {dataToPlot = [{seconds : dataToPlot[0].seconds, rssi : 0}]; svg.selectAll("." + pathClass)
+              .attr({ d: lineFun(dataToPlot) }); }
+            if(scope.showReceiverId2 === true) {svg.selectAll("." + pathClass_2)
+              .attr({ d: lineFun2(dataToPlot2) }); }
+            else {dataToPlot2 = [{seconds : dataToPlot2[0].seconds, rssi : 0}]; svg.selectAll("." + pathClass_2)
+              .attr({ d: lineFun(dataToPlot2) }); }
 
           }
 
