@@ -115,7 +115,8 @@ angular.module('state', ['btford.socket-io'])
     $scope.setTransmitterUrl = setTransmitterUrl;
     $scope.receiverId = DEFAULT_RECEIVER_ID;
     $scope.setReceiverUrl = setReceiverUrl;
-    $scope.rssiSamples = [ { seconds: 0, rssi: 0 } ];
+    $scope.rssiSamples = {};
+    $scope.rssiSamples[DEFAULT_RECEIVER_ID] = [ { seconds: 0, rssi: 0 } ];
     $scope.rssiSeconds = 0;
     setTransmitterUrl();
     //setReceiverUrl();
@@ -133,10 +134,10 @@ angular.module('state', ['btford.socket-io'])
       var seconds = $scope.rssiSeconds;
       var rssi = sample[$scope.transmitterId].radioDecodings[0].rssi;
       $scope.rssiSeconds += REFRESH_SECONDS;
-      $scope.rssiSamples.push( { seconds: seconds, rssi: rssi } );
+      $scope.rssiSamples[DEFAULT_RECEIVER_ID].push( { seconds: seconds, rssi: rssi } );
       console.log(JSON.stringify(rssi));
-      if($scope.rssiSamples.length > MAX_NUMBER_OF_SAMPLES) {
-        $scope.rssiSamples.shift();
+      if($scope.rssiSamples[DEFAULT_RECEIVER_ID].length > MAX_NUMBER_OF_SAMPLES) {
+        $scope.rssiSamples[DEFAULT_RECEIVER_ID].shift();
       }
     }
     $interval(update, REFRESH_SECONDS * 1000);
@@ -151,7 +152,8 @@ angular.module('state', ['btford.socket-io'])
       link:
         function(scope, elem, attrs) {
           var exp = $parse(attrs.chartData);
-          var dataToPlot = exp(scope);
+          var bigDataToPlot = exp(scope);
+          var dataToPlot = bigDataToPlot[DEFAULT_RECEIVER_ID];
           var padding = 20;
           var pathClass= "path";
           var pathClass_2 = "path2";
@@ -160,10 +162,10 @@ angular.module('state', ['btford.socket-io'])
           var rawSvg = elem.find('svg');
           var svg = d3.select(rawSvg[0]);
 
-          scope.$watchCollection(exp, function(newVal, oldVal) {
-            dataToPlot = newVal;
+          scope.$watch(exp, function(newVal, oldVal) {
+            dataToPlot = newVal[DEFAULT_RECEIVER_ID];
             redrawLineChart();
-          });
+          }, true);
 
           function setChartParameters() {
             xScale = d3.scale.linear()
