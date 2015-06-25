@@ -8,6 +8,7 @@ DEFAULT_TRANSMITTER_ID = '5c313e5234dc'
 DEFAULT_RECEIVER_ID = '001bc50940800000';
 DEFAULT_RECEIVER_ID2 = '001bc50940800007';
 DEFAULT_SOCKET_URL = DEFAULT_API_ROOT + '/websocket';
+DEFAULT_MAX_COLORS = 8;
 
 
 angular.module('state', ['btford.socket-io'])
@@ -141,11 +142,13 @@ angular.module('state', ['btford.socket-io'])
       }
 
       function updateReceiversArray(sample) {
-        for(var cRadio = 0; cRadio <  sample[$scope.transmitterId].radioDecodings.length; cRadio++) {
-          var receiverTemp = sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value;
-          if($scope.receiversArray.indexOf(receiverTemp) === -1) {
-            $scope.receiversArray.push(receiverTemp);
-            $scope.rssiSamplesDynamic[receiverTemp] = [];
+        if(sample[$scope.transmitterId]) {
+          for(var cRadio = 0; cRadio <  sample[$scope.transmitterId].radioDecodings.length; cRadio++) {
+            var receiverTemp = sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value;
+            if($scope.receiversArray.indexOf(receiverTemp) === -1) {
+              $scope.receiversArray.push(receiverTemp);
+              $scope.rssiSamplesDynamic[receiverTemp] = [];
+            }
           }
         }
       }
@@ -194,7 +197,7 @@ angular.module('state', ['btford.socket-io'])
       //console.log('Printing receiversArray : ' + $scope.receiversArray);
       //console.log('Printing rssiSamplesDynamic' + JSON.stringify($scope.rssiSamplesDynamic, null, 4));
       for(var cR = 0; cR < $scope.receiversArray.length; cR++) {
-        console.log('Printing the length : ' + $scope.rssiSamplesDynamic[$scope.receiversArray[cR]].length);
+        //console.log('Printing the length : ' + $scope.rssiSamplesDynamic[$scope.receiversArray[cR]].length);
       }
 
       var seconds = $scope.rssiSeconds;
@@ -204,7 +207,6 @@ angular.module('state', ['btford.socket-io'])
       $scope.rssiSeconds += REFRESH_SECONDS;
       $scope.rssiSamples[DEFAULT_RECEIVER_ID].push( { seconds: seconds, rssi: rssi } );
       $scope.rssiSamples[DEFAULT_RECEIVER_ID2].push( { seconds: seconds, rssi: rssi2 } );
-      console.log(JSON.stringify(rssi) + JSON.stringify(rssi2));
       if($scope.rssiSamples[DEFAULT_RECEIVER_ID].length > MAX_NUMBER_OF_SAMPLES) {
         $scope.rssiSamples[DEFAULT_RECEIVER_ID].shift();
         $scope.rssiSamples[DEFAULT_RECEIVER_ID2].shift();
@@ -226,7 +228,7 @@ angular.module('state', ['btford.socket-io'])
         function(scope, elem, attrs) {
           var exp = $parse(attrs.chartData);
           var bigBigDataToPlot = exp(scope);
-          console.log(JSON.stringify(bigBigDataToPlot, null, 4));
+          var drawnReceivers = [];
           var bigDataToPlot = bigBigDataToPlot[0];
           var dataToPlot = bigDataToPlot[DEFAULT_RECEIVER_ID];
           var dataToPlot2 = bigDataToPlot[DEFAULT_RECEIVER_ID2];
@@ -238,7 +240,7 @@ angular.module('state', ['btford.socket-io'])
           var rawSvg = elem.find('svg');
           var svg = d3.select(rawSvg[0]);
 
-          console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
+          //console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
 
           scope.$watch(exp, function(newVal, oldVal) {
             dataToPlot = newVal[0][DEFAULT_RECEIVER_ID];
@@ -246,9 +248,11 @@ angular.module('state', ['btford.socket-io'])
             dataToPlotObject = newVal[1];
             //console.log('Printing dataToPlotObject ' + JSON.stringify(dataToPlotObject, null, 4));
             dataToPlotArray =[dataToPlot, dataToPlot2];
-            console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
-            drawLineChart();
+            //console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
+            
+            drawReceivers();
             redrawLineChart();
+
           }, true);
 
           function setChartParameters() {
@@ -277,9 +281,26 @@ angular.module('state', ['btford.socket-io'])
               .interpolate("basis");
           }
          
-          
+          function drawReceivers() {
+            for(var cReceiver = 0; cReceiver < scope.receiversArray.length; cReceiver++) {
+              var receiverTemp = scope.receiversArray[cReceiver];
+              if(drawnReceivers.indexOf(receiverTemp) === -1) {
+                console.log('Drawing the line of receiver : ' + receiverTemp);
+                svg.append("svg:path")
+                    .attr({
+                      d: lineFun(dataToPlotObject[receiverTemp]),
+                      "stroke": rainbow(DEFAULT_MAX_COLORS, cReceiver % DEFAULT_MAX_COLORS),
+                      "stroke-width": 2,
+                      "fill": "none",
+                      "class": 'path_' + receiverTemp});
+                drawnReceivers.push(receiverTemp);
+              }
+            }
+          }
+
 
           function drawLineChart() {
+
             setChartParameters();
 
             svg.append("svg:g")
@@ -291,26 +312,13 @@ angular.module('state', ['btford.socket-io'])
               .attr("class", "y axis")
               .attr("transform", "translate(40,-10)")
               .call(yAxisGen);
-
-
-            console.log('receiversArray in drawLineChart ' + scope.receiversArray );
-            for(var cReceiver = 0; cReceiver < scope.receiversArray.length; cReceiver++) {
-              var receiverTemp = scope.receiversArray[cReceiver];
-              console.log('Drawing ' + receiverTemp);
-              svg.append("svg:path")
-                .attr({
-                  d: lineFun(dataToPlotObject[receiverTemp]),
-                  "stroke": "#ff6900",
-                  "stroke-width": 2,
-                  "fill": "none",
-                  "class": 'path_' + receiverTemp});
-            }
-
-  
+ 
           }
 
           function redrawLineChart() {
+
             setChartParameters();
+
             svg.selectAll("g.y.axis").call(yAxisGen);
             svg.selectAll("g.x.axis").call(xAxisGen);
             
@@ -321,7 +329,29 @@ angular.module('state', ['btford.socket-io'])
             }
           }
 
-          drawLineChart();
+          function rainbow(numOfSteps, step) {
+            // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
+            // Adam Cole, 2011-Sept-14
+            // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
+            var r, g, b;
+            var h = step / numOfSteps;
+            var i = ~~(h * 6);
+            var f = h * 6 - i;
+            var q = 1 - f;
+            switch(i % 6){
+              case 0: r = 1; g = f; b = 0; break;
+              case 1: r = q; g = 1; b = 0; break;
+              case 2: r = 0; g = 1; b = f; break;
+              case 3: r = 0; g = q; b = 1; break;
+              case 4: r = f; g = 0; b = 1; break;
+              case 5: r = 1; g = 0; b = q; break;
+            }
+            var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
+            return (c);
+          }
+
+        drawLineChart();
+
         }
      };
   });
