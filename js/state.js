@@ -110,28 +110,71 @@ angular.module('state', ['btford.socket-io'])
 
   // Chart controller
   .controller('ChartCtrl', ['$scope','$interval', 'Samples',
-                            function($scope, $interval, Samples) {
-    $scope.apiRoot = DEFAULT_API_ROOT;
-    $scope.transmitterId = DEFAULT_TRANSMITTER_ID;
-    $scope.setTransmitterUrl = setTransmitterUrl;
-    $scope.receiverId = DEFAULT_RECEIVER_ID;
-    $scope.receiverId2 = DEFAULT_RECEIVER_ID2;
-    $scope.showReceiverId = true;
-    $scope.showReceiverId2 = true;
-    $scope.setReceiverUrl = setReceiverUrl;
-    $scope.rssiSamples = {};
-    $scope.rssiSamples[DEFAULT_RECEIVER_ID] = [ { seconds: 0, rssi: 0 } ];
-    $scope.rssiSamples[DEFAULT_RECEIVER_ID2] = [ { seconds: 0, rssi: 0 } ];
-    $scope.rssiSeconds = 0;
-    setTransmitterUrl();
-    //setReceiverUrl();
+                              function($scope, $interval, Samples) {
+      $scope.apiRoot = DEFAULT_API_ROOT;
+      $scope.transmitterId = DEFAULT_TRANSMITTER_ID;
+      $scope.setTransmitterUrl = setTransmitterUrl;
+      $scope.receiverId = DEFAULT_RECEIVER_ID;
+      $scope.receiverId2 = DEFAULT_RECEIVER_ID2;
+      $scope.showReceiverId = true;
+      $scope.showReceiverId2 = true;
+      $scope.setReceiverUrl = setReceiverUrl;
+      $scope.rssiSamples = {};
+      $scope.rssiSamplesDynamic = {};
+      $scope.rssiSamples[DEFAULT_RECEIVER_ID] = [ { seconds: 0, rssi: 0 } ];
+      $scope.rssiSamples[DEFAULT_RECEIVER_ID2] = [ { seconds: 0, rssi: 0 } ];
+      $scope.rssiSeconds = 0;
+      $scope.rssiSamplesBig = [$scope.rssiSamples, $scope.rssiSamplesDynamic];
+      setTransmitterUrl();
 
-    $scope.toggle = function() {
-      $scope.showReceiverId = !$scope.showReceiverId;
-    }
+      //setReceiverUrl();
 
-    $scope.toggle2 = function() {
-      $scope.showReceiverId2 = !$scope.showReceiverId2;
+      $scope.receiversArray = [];
+
+
+      $scope.toggle = function() {
+        $scope.showReceiverId = !$scope.showReceiverId;
+      }
+
+      $scope.toggle2 = function() {
+        $scope.showReceiverId2 = !$scope.showReceiverId2;
+      }
+
+      function updateReceiversArray(sample) {
+        for(var cRadio = 0; cRadio <  sample[$scope.transmitterId].radioDecodings.length; cRadio++) {
+          var receiverTemp = sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value;
+          if($scope.receiversArray.indexOf(receiverTemp) === -1) {
+            $scope.receiversArray.push(receiverTemp);
+            $scope.rssiSamplesDynamic[receiverTemp] = [];
+          }
+        }
+      }
+
+      function updateRssiArray(sample, seconds) {
+
+        for(var cReceiver = 0; cReceiver < $scope.receiversArray.length; cReceiver++) {
+          var receiverTemp = $scope.receiversArray[cReceiver];
+          var updated = false;
+          var seconds = $scope.rssiSeconds;
+
+          for(var cRadio = 0; cRadio < sample[$scope.transmitterId].radioDecodings.length; cRadio++) {
+
+            if(sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value === receiverTemp) {
+              var rssi = sample[$scope.transmitterId].radioDecodings[cRadio].rssi;
+              $scope.rssiSamplesDynamic[receiverTemp].push({seconds : seconds, rssi : rssi });
+              updated = true; 
+              break;
+            }
+          }
+
+          if(!updated) {
+            $scope.rssiSamplesDynamic[receiverTemp].push({seconds : seconds, rssi : 0 });
+          }
+
+          if($scope.rssiSamplesDynamic[receiverTemp].length > MAX_NUMBER_OF_SAMPLES) {
+            $scope.rssiSamplesDynamic[receiverTemp].shift();
+          }
+        }   
     }
 
     function setTransmitterUrl() {
@@ -144,6 +187,16 @@ angular.module('state', ['btford.socket-io'])
 
     function update() {
       var sample = Samples.getLatest();
+
+      updateReceiversArray(sample);
+      updateRssiArray(sample)
+  
+      //console.log('Printing receiversArray : ' + $scope.receiversArray);
+      //console.log('Printing rssiSamplesDynamic' + JSON.stringify($scope.rssiSamplesDynamic, null, 4));
+      for(var cR = 0; cR < $scope.receiversArray.length; cR++) {
+        console.log('Printing the length : ' + $scope.rssiSamplesDynamic[$scope.receiversArray[cR]].length);
+      }
+
       var seconds = $scope.rssiSeconds;
       var rssi = sample[$scope.transmitterId].radioDecodings[0].rssi;
       if(sample[$scope.transmitterId].radioDecodings[3]) {rssi2 = sample[$scope.transmitterId].radioDecodings[3].rssi;}
@@ -156,6 +209,9 @@ angular.module('state', ['btford.socket-io'])
         $scope.rssiSamples[DEFAULT_RECEIVER_ID].shift();
         $scope.rssiSamples[DEFAULT_RECEIVER_ID2].shift();
       }
+
+      $scope.rssiSamplesBig = [$scope.rssiSamples, $scope.rssiSamplesDynamic];
+
     }
     $interval(update, REFRESH_SECONDS * 1000);
   }])
@@ -169,20 +225,29 @@ angular.module('state', ['btford.socket-io'])
       link:
         function(scope, elem, attrs) {
           var exp = $parse(attrs.chartData);
-          var bigDataToPlot = exp(scope);
+          var bigBigDataToPlot = exp(scope);
+          console.log(JSON.stringify(bigBigDataToPlot, null, 4));
+          var bigDataToPlot = bigBigDataToPlot[0];
           var dataToPlot = bigDataToPlot[DEFAULT_RECEIVER_ID];
           var dataToPlot2 = bigDataToPlot[DEFAULT_RECEIVER_ID2];
+          var dataToPlotArray = [dataToPlot, dataToPlot2];
           var padding = 20;
-          var pathClass= "path";
-          var pathClass_2 = "path2";
+          var pathClass = ['_1', '_2'];
           var xScale, yScale, xAxisGen, yAxisGen, lineFun;
           var d3 = $window.d3;
           var rawSvg = elem.find('svg');
           var svg = d3.select(rawSvg[0]);
 
+          console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
+
           scope.$watch(exp, function(newVal, oldVal) {
-            dataToPlot = newVal[DEFAULT_RECEIVER_ID];
-            dataToPlot2 = newVal[DEFAULT_RECEIVER_ID2];
+            dataToPlot = newVal[0][DEFAULT_RECEIVER_ID];
+            dataToPlot2 = newVal[0][DEFAULT_RECEIVER_ID2];
+            dataToPlotObject = newVal[1];
+            //console.log('Printing dataToPlotObject ' + JSON.stringify(dataToPlotObject, null, 4));
+            dataToPlotArray =[dataToPlot, dataToPlot2];
+            console.log('receiversArray from the grave ' + JSON.stringify(scope.receiversArray, null, 4));
+            drawLineChart();
             redrawLineChart();
           }, true);
 
@@ -210,13 +275,10 @@ angular.module('state', ['btford.socket-io'])
               .x(function(d) { return xScale(d.seconds); })
               .y(function(d) { return yScale(d.rssi); })
               .interpolate("basis");
-
-            lineFun2 = d3.svg.line()
-              .x(function(d) { return xScale(d.seconds); })
-              .y(function(d) { return yScale(d.rssi); })
-              .interpolate("basis");
           }
          
+          
+
           function drawLineChart() {
             setChartParameters();
 
@@ -230,21 +292,19 @@ angular.module('state', ['btford.socket-io'])
               .attr("transform", "translate(40,-10)")
               .call(yAxisGen);
 
-            svg.append("svg:path")
-              .attr({
-                d: lineFun(dataToPlot),
-                "stroke": "#ff6900",
-                "stroke-width": 2,
-                "fill": "none",
-                "class": pathClass});
 
-            svg.append("svg:path")
-              .attr({
-                d: lineFun2(dataToPlot2),
-                "stroke": "#009999",
-                "stroke-width": 2,
-                "fill": "none",
-                "class": pathClass_2})
+            console.log('receiversArray in drawLineChart ' + scope.receiversArray );
+            for(var cReceiver = 0; cReceiver < scope.receiversArray.length; cReceiver++) {
+              var receiverTemp = scope.receiversArray[cReceiver];
+              console.log('Drawing ' + receiverTemp);
+              svg.append("svg:path")
+                .attr({
+                  d: lineFun(dataToPlotObject[receiverTemp]),
+                  "stroke": "#ff6900",
+                  "stroke-width": 2,
+                  "fill": "none",
+                  "class": 'path_' + receiverTemp});
+            }
 
   
           }
@@ -254,15 +314,11 @@ angular.module('state', ['btford.socket-io'])
             svg.selectAll("g.y.axis").call(yAxisGen);
             svg.selectAll("g.x.axis").call(xAxisGen);
             
-            if(scope.showReceiverId === true) {svg.selectAll("." + pathClass)
-              .attr({ d: lineFun(dataToPlot) }); }
-            else {dataToPlot = [{seconds : dataToPlot[0].seconds, rssi : 0}]; svg.selectAll("." + pathClass)
-              .attr({ d: lineFun(dataToPlot) }); }
-            if(scope.showReceiverId2 === true) {svg.selectAll("." + pathClass_2)
-              .attr({ d: lineFun2(dataToPlot2) }); }
-            else {dataToPlot2 = [{seconds : dataToPlot2[0].seconds, rssi : 0}]; svg.selectAll("." + pathClass_2)
-              .attr({ d: lineFun(dataToPlot2) }); }
-
+            for(var cReceiver = 0; cReceiver < scope.receiversArray.length; cReceiver++) {
+              var receiverTemp = scope.receiversArray[cReceiver];
+              svg.selectAll("." + 'path_' + receiverTemp)
+              .attr({ d: lineFun(dataToPlotObject[receiverTemp]) }); 
+            }
           }
 
           drawLineChart();
