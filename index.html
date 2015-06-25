@@ -33,8 +33,19 @@
             <button ng-click="setTransmitterUrl()">Update</button>
           </form>
           <h1>RSSI in Time</h1>
-          <p> Tracking {{transmitterId}} </p> <button ng-click="toggle()"> {{receiverId}}</button> 
-          <button ng-click="toggle2()"> {{receiverId2}}</button>
+          <p> Tracking {{transmitterId}} </p> 
+
+
+	  <p>With the following receivers</p>
+	  <ul>
+	    <li data-ng-repeat="x in receiversArray">
+		<button style = 'background-color: #E3E1B8' ng-click="toggle({{ $index }})">
+		{{ x }}
+		</button>
+
+	    </li>
+	  </ul>
+
 
           <div style="padding:30px" linear-chart chart-data="rssiSamples"></div>
         </div>
