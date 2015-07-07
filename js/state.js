@@ -1,6 +1,5 @@
 REFRESH_SECONDS = 1;
 MAX_NUMBER_OF_EVENTS = 10;
-MAX_NUMBER_OF_SAMPLES = 10;
 WHEREIS_QUERY = '/whereis/transmitter/';
 WHATAT_QUERY = '/whatat/receiver/';
 DEFAULT_API_ROOT = 'http://www.hyperlocalcontext.com/';
@@ -128,18 +127,16 @@ angular.module('state', ['btford.socket-io'])
       $scope.maxRSSI = 200;
       $scope.isPaused = false;
       $scope.maxNumberOfSamples = 10;
-
-      $scope.updateChart = true;
+      $scope.updateChart = true; // Each time this value changes, the chart is being updated.
  
       
       $interval(updateFromService , REFRESH_SECONDS * 1000);
-
 
       function updateFromService() {
    
         var sample = Samples.getLatest(); // Getting the latest data.
 
-       if(sample && sample[$scope.transmitterId]) { // Making sure the data is well-defined
+        if(sample && sample[$scope.transmitterId]) { // Making sure the data is well-defined
           
           if($scope.isDiscovering) { 
             updateReceivers(sample); // Updating the meta-data model.
@@ -149,12 +146,17 @@ angular.module('state', ['btford.socket-io'])
           $scope.rssiSeconds += REFRESH_SECONDS; // Updating the data model.
 
         }
-        console.log('Number of receivers : ' + $scope.numReceivers);
-        console.log('Receivers : ' + JSON.stringify($scope.receivers, null, 4));
+
+        if(!$scope.isPaused) {
+          for(var receiverTemp in $scope.receivers) {
+            var indexOfLatest = $scope.rssiSamples[receiverTemp].length -1;
+            $scope.receivers[receiverTemp].latest = $scope.rssiSamples[receiverTemp][indexOfLatest].rssi;
+          }
+        }
+
       }
 
       $scope.updateFromUser = function () {
-        console.log('updateFromUser!!!!');
 
         $scope.updateChart = !$scope.updateChart;
 
@@ -163,11 +165,7 @@ angular.module('state', ['btford.socket-io'])
         $scope.receivers = {};
         $scope.numReceivers = 0;
         $scope.rssiSeconds = 0;
-        
-        // Data binded in the scope.
       }
-
-      $scope.updateFromUser();
  
       function updateReceivers(sample) {
 
@@ -175,7 +173,7 @@ angular.module('state', ['btford.socket-io'])
             var receiverTemp = sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value;
             if(!(receiverTemp in $scope.receivers)) {
               var colorTemp = rainbow(DEFAULT_MAX_COLORS, $scope.numReceivers++ % DEFAULT_MAX_COLORS)
-              $scope.receivers[receiverTemp] = {color : colorTemp, isDrawn : false, isDisplayed : true}
+              $scope.receivers[receiverTemp] = {color : colorTemp, isDrawn : false, isDisplayed : true, latest : 0, receiverId : receiverTemp}
             }
           }
       }
@@ -218,7 +216,7 @@ angular.module('state', ['btford.socket-io'])
           }
  
           // If it has reached the maximum number of samples, drop the oldest one.
-          if($scope.rssiSamples[receiverTemp].length > MAX_NUMBER_OF_SAMPLES) {
+          if($scope.rssiSamples[receiverTemp].length > $scope.maxNumberOfSamples) {
             $scope.rssiSamples[receiverTemp].shift();
           }
         }   
@@ -244,11 +242,14 @@ angular.module('state', ['btford.socket-io'])
       var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
       return (c);
     }
+
+    $scope.updateFromUser();
+
   }])
  
  
   // Linear Chart directive
-  .directive('linearChart',  function($parse, $window){
+  .directive('linearChart',  function($parse, $window) {
     return {
       restrict: "EA",
       template: "<svg width='1000' height='300'></svg>",
@@ -268,25 +269,24 @@ angular.module('state', ['btford.socket-io'])
 
 
           
-          initChart();
-
+          initChart(); // Initialize the chart once.
 
 
           // Update coming from the service. Affecting dynamic content.
           
           scope.$watch(chartDataExp, function(newVal, oldVal) {
-            console.log('updating service data');
+
             dataToPlot = newVal;
-            console.log("DataToPlot : " + JSON.stringify(dataToPlot, null, 4));
-            dynamicUpdateChart();
-            dynamicDrawReceivers();
+
+            if(!scope.isPaused) {
+              dynamicUpdateChart();
+              dynamicDrawReceivers();
+            }
           }, true);
 
           // Update coming from the user. Affecting static content.
           
           scope.$watch(updateChartExp, function(newVal, oldVal) {
-            console.log('udpating user data');
-            console.log(JSON.stringify(dataToPlot,null,4));
             staticUpDateChart();
           }, true);
           
@@ -331,6 +331,8 @@ angular.module('state', ['btford.socket-io'])
             
           function staticUpDateChart() {
 
+            svg.selectAll("*").remove(); // Erasing the previous svg.
+
             yScale = d3.scale.linear()
               .domain([scope.minRSSI, scope.maxRSSI])
               .range([rawSvg.attr("height") - padding, 0]);
@@ -344,9 +346,16 @@ angular.module('state', ['btford.socket-io'])
               .scale(xScale)
               .orient("bottom")
               .ticks(Math.min(scope.maxNumberOfSamples, scope.rssiSeconds) - 1);
-           
-            svg.selectAll("g.y.axis").call(yAxisGen);
-            svg.selectAll("g.x.axis").call(xAxisGen);
+            
+            svg.append("svg:g")
+              .attr("class", "x axis")
+              .attr("transform", "translate(9,270)")
+              .call(xAxisGen);
+
+            svg.append("svg:g")
+              .attr("class", "y axis")
+              .attr("transform", "translate(40,-10)")
+              .call(yAxisGen);
           }  
 
           function dynamicUpdateChart() {
@@ -368,7 +377,6 @@ angular.module('state', ['btford.socket-io'])
 
           function dynamicDrawReceivers() {
 
-            console.log('In dynamicDrawReceivers : ' + JSON.stringify(scope.receivers, null, 4));
             for(var receiverTemp in scope.receivers) {
 
               var isDisplayed = scope.receivers[receiverTemp].isDisplayed;
@@ -378,12 +386,10 @@ angular.module('state', ['btford.socket-io'])
               if(isDisplayed) {
 
                 if(isDrawn) {
-                  console.log('Selecting!!!');
                   svg.selectAll("." + 'path_' + receiverTemp)
                     .attr({ d: lineFun(dataToPlot[receiverTemp]) }); 
                 }
                 else {
-                  console.log('Appending!');
                   svg.append("svg:path")
                       .attr({
                         d: lineFun(dataToPlot[receiverTemp]),
@@ -395,14 +401,15 @@ angular.module('state', ['btford.socket-io'])
                 }
               }
 
-            else {
-              if(receiverTemp.isDrawn) {
-                svg.selectAll("." + 'path_' + receiverTemp).remove();
-                scope.receivers[receiverTemp].isDrawn = false;
+              else {
+
+                if(isDrawn) {
+                  svg.selectAll("." + 'path_' + receiverTemp).remove();
+                  scope.receivers[receiverTemp].isDrawn = false;
+                }
               }
             }
           }
         }
-      }
     }
   });
