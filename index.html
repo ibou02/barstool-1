@@ -22,34 +22,54 @@
         </ul>
       </div>
 
-      <!----- D3 (Transmitter & Receiver) ----->
-      <div ng-controller="ChartCtrl">
+      <!----- D3 (Transmitter) ----->
+ 
         <div ng-show="show.transmitter">
-          <form class="apiUrl">
-            API Root: &nbsp;
-            <input type="text" ng-model="apiRoot" size="30"/>
-            &nbsp; Transmitter ID: &nbsp;
-            <input type="text" ng-model="transmitterId" size="16"/>
-            <button ng-click="setTransmitterUrl()">Update</button>
-          </form>
-          <h1>RSSI in Time</h1>
-          <p> Tracking {{transmitterId}} </p> 
+          <div ng-controller="ChartCtrl">
+
+		  <form class="apiUrl">
+		    API Root: &nbsp;
+		    <input type="text" ng-model="apiRoot" size="30"/>
+		    &nbsp; Transmitter ID: &nbsp;
+		    <input type="text" ng-model="transmitterId" size="16"/>
+		    From Min rssi of 
+		    <input type="text" ng-model="minRSSI" size="16" />
+		    to Max rssi of
+		    <input type="text" ng-model="maxRSSI" size="16" />
+		    <button ng-click="updateFromUser()">Update</button>
+		    <button ng-click="setTransmitterUrl()">Reset</button>
+		    <button ng-click="updateChart = !updateChart">Reset</button>
+                    Max number of samples : <input type="text" ng-model="maxNumberOfSamples" size="16"/>
+		  </form>
+		  <h1>RSSI in Time</h1>
+		  <p> Tracking {{transmitterId}} </p> 
 
 
-	  <p>With the following receivers</p>
-	  <ul>
-	    <li data-ng-repeat="x in receiversArray">
-		<button style = 'background-color: #E3E1B8' ng-click="toggle({{ $index }})">
-		{{ x }}
-		</button>
+		  <p>With the following receivers</p>
+		  <ul>
+		    <li data-ng-repeat="x in receivers">
+			<button style ="background-color:{{receiversColor[$index]}}"  ng-click="receiversShow[$index] = !receiversShow[$index]">
+			{{ x }} _{{ rssiSamples[x][rssiSamples[x].length-1].rssi }}_ {{receiversShow[$index]? 'show':'hide' }}
+			</button>
 
-	    </li>
-	  </ul>
+		    </li>
+		    <button ng-click="discoverReceivers = !discoverReceivers">
+		    Discover Receivers {{discoverReceivers}}
+		    </button>
 
+		    <button ng-click="pause = !pause">
+		    Pause {{pause? 'on' : 'off'}}
+		    </button>
 
-          <div style="padding:30px" linear-chart chart-data="rssiSamples"></div>
+		  </ul>
+
+		 
+		  <div style="padding:30px" linear-chart chart-data="rssiSamples" update-chart="updateChart"></div>
+
+          </dib>
         </div>
 
+      <!----- D3 (Receiver) ----->
         <div ng-show="show.receiver">
           <form class="apiUrl">
             API Root: &nbsp;
@@ -58,7 +78,7 @@
             <input type="text" ng-model="receiverId" size="16"/>
             <button ng-click="setReceiverUrl()">Update</button>
           </form>
-          <h1>Chart(s) to come...</h1>
+           
         </div>
 
       </div>
