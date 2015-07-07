@@ -76,7 +76,7 @@ angular.module('state', ['btford.socket-io'])
  
  
   // Samples service
-  .service('Samples', function($http, $interval) {
+  .service('transmitterSamples', function($http, $interval) {
     var samples;
     var url = null;
  
@@ -106,8 +106,8 @@ angular.module('state', ['btford.socket-io'])
  
  
   // Chart controller
-  .controller('ChartCtrl', ['$scope','$interval', 'Samples',
-                              function($scope, $interval, Samples) {
+  .controller('ChartCtrl', ['$scope','$interval', 'transmitterSamples',
+                              function($scope, $interval, transmitterSamples) {
       // Context
       $scope.apiRoot = DEFAULT_API_ROOT;
       $scope.transmitterId = DEFAULT_TRANSMITTER_ID;
@@ -134,7 +134,7 @@ angular.module('state', ['btford.socket-io'])
 
       function updateFromService() {
    
-        var sample = Samples.getLatest(); // Getting the latest data.
+        var sample = transmitterSamples.getLatest(); // Getting the latest data.
 
         if(sample && sample[$scope.transmitterId]) { // Making sure the data is well-defined
           
@@ -160,7 +160,7 @@ angular.module('state', ['btford.socket-io'])
 
         $scope.updateChart = !$scope.updateChart;
 
-        Samples.setUrl($scope.apiRoot + WHEREIS_QUERY + $scope.transmitterId);
+        transmitterSamples.setUrl($scope.apiRoot + WHEREIS_QUERY + $scope.transmitterId);
         $scope.rssiSamples = {};
         $scope.receivers = {};
         $scope.numReceivers = 0;
@@ -412,4 +412,36 @@ angular.module('state', ['btford.socket-io'])
           }
         }
     }
+  })
+
+// Samples service
+  .service('receiverSamples', function($http, $interval) {
+    var samples;
+    var url = null;
+ 
+    poll();
+ 
+    function poll() {
+      if(!url) {
+        return;
+      }
+      $http.defaults.headers.common.Accept = 'application/json';
+      $http.get(url)
+        .success(function(data, status, headers, config) {
+          var sample = data.devices;
+          samples = sample;
+        })
+        .error(function(data, status, headers, config) {
+          console.log('Error polling ' + url);
+        });
+    }
+    $interval(poll, REFRESH_SECONDS * 1000);
+ 
+    return {
+      getLatest: function() { return samples; },
+      setUrl: function(newUrl) { url = newUrl; }
+    };
   });
+
+
+
