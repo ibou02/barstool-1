@@ -37,9 +37,8 @@
 		    to Max rssi of
 		    <input type="text" ng-model="maxRSSI" size="16" />
 		    <button ng-click="updateFromUser()">Update</button>
-		    <button ng-click="setTransmitterUrl()">Reset</button>
-		    <button ng-click="updateChart = !updateChart">Reset</button>
-                    Max number of samples : <input type="text" ng-model="maxNumberOfSamples" size="16"/>
+	                    
+                    <p> Max number of samples : <input type="text" ng-model="maxNumberOfSamples" size="16"/> </p>
 		  </form>
 		  <h1>RSSI in Time</h1>
 		  <p> Tracking {{transmitterId}} </p> 
@@ -48,17 +47,17 @@
 		  <p>With the following receivers</p>
 		  <ul>
 		    <li data-ng-repeat="x in receivers">
-			<button style ="background-color:{{receiversColor[$index]}}"  ng-click="receiversShow[$index] = !receiversShow[$index]">
-			{{ x }} _{{ rssiSamples[x][rssiSamples[x].length-1].rssi }}_ {{receiversShow[$index]? 'show':'hide' }}
+			<button style ="background-color:{{x.color}}"  ng-click="x.isDisplayed = !x.isDisplayed">
+			{{ x.receiverId }}_{{x.latest}}_ {{x.isDisplayed? 'show':'hide' }}
 			</button>
 
 		    </li>
-		    <button ng-click="discoverReceivers = !discoverReceivers">
-		    Discover Receivers {{discoverReceivers}}
+		    <button ng-click="isDiscovering = !isDiscovering">
+		    Discover Receivers {{isDiscovering? 'on' : 'off'}}
 		    </button>
 
-		    <button ng-click="pause = !pause">
-		    Pause {{pause? 'on' : 'off'}}
+		    <button ng-click="isPaused = !isPaused">
+		    Pause {{isPaused? 'on' : 'off'}}
 		    </button>
 
 		  </ul>
