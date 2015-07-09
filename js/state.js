@@ -3,7 +3,8 @@ MAX_NUMBER_OF_EVENTS = 10;
 WHEREIS_QUERY = '/whereis/transmitter/';
 WHATAT_QUERY = '/whatat/receiver/';
 DEFAULT_API_ROOT = 'http://www.hyperlocalcontext.com/';
-DEFAULT_TRANSMITTER_ID = '5c313e5234dc'
+DEFAULT_TRANSMITTER_ID = '5c313e5234dc';
+DEFAULT_RECEIVER_ID = '001bc50940810016';
 DEFAULT_SOCKET_URL = DEFAULT_API_ROOT + '/websocket';
 DEFAULT_MAX_COLORS = 8;
 
@@ -441,7 +442,155 @@ angular.module('state', ['btford.socket-io'])
       getLatest: function() { return samples; },
       setUrl: function(newUrl) { url = newUrl; }
     };
+  })
+
+  .controller('BarCtrl', ['$scope','$interval', 'receiverSamples', 
+                          function($scope, $interval, receiverSamples) {
+      // Context
+      $scope.apiRoot = DEFAULT_API_ROOT;
+      $scope.receiverId = DEFAULT_RECEIVER_ID;
+      //$scope.setReceiverUrl = setReceiverUrl;
+
+      // Data
+      $scope.rssiSeconds = 0;
+      $scope.rssiSamples = {};
+
+      // Meta-Data
+      $scope.transmitters = {};
+      $scope.numTransmitters= 0;
+
+      // Accessible to the User. Display preference.
+      $scope.isDiscovering = true;
+      $scope.isPaused = false;
+      $scope.maxNumberOfSamples = 10;
+      $scope.updateChart = true; // Each time this value changes, the chart is being updated.
+      receiverSamples.setUrl($scope.apiRoot + WHATAT_QUERY + $scope.receiverId);
+      
+      $interval(updateFromService , REFRESH_SECONDS * 1000);
+
+      function updateFromService() {
+        var sample = receiverSamples.getLatest();
+        console.log(JSON.stringify(sample, null, 4));
+        updateTransmitters(sample);
+        console.log('Transmitters : ' + JSON.stringify($scope.transmitters, null, 4));
+        updateRssiSamples(sample);
+        console.log('RssiSamples : ' + JSON.stringify($scope.rssiSamples, null, 4));
+      }
+
+      function updateTransmitters(sample) {
+        for(var transmitterTemp in sample) {
+          if(!(transmitterTemp in $scope.transmitters)) {
+            $scope.transmitters[transmitterTemp];
+            $scope.transmitters[transmitterTemp] = { value : transmitterTemp};
+          }
+        }
+      }
+
+      function updateRssiSamples(sample) {
+        
+        for(var transmitterTemp in $scope.transmitters) {
+
+
+          if(!(transmitterTemp in $scope.rssiSamples)) {
+            console.log('Creating new transmitter rssiSamples!');
+            $scope.rssiSamples[transmitterTemp];
+            $scope.rssiSamples[transmitterTemp] = [];
+          }
+          if(sample[transmitterTemp]) {
+            for(var cRadio = 0; cRadio < sample[transmitterTemp].radioDecodings.length; cRadio++) {
+              var radioDecodingReceiver = sample[transmitterTemp].radioDecodings[cRadio].identifier.value;
+              if(radioDecodingReceiver === $scope.receiverId) {
+                console.log("Found it at " + cRadio);
+                var rssi = sample[transmitterTemp].radioDecodings[cRadio].rssi;
+                $scope.rssiSamples[transmitterTemp].push(rssi);
+                updated = true;
+                break;
+              }
+            }
+          }
+          
+          else {
+            console.log('In up!')
+            $scope.rssiSamples[transmitterTemp].push(0);
+          }
+
+          if($scope.rssiSamples[transmitterTemp].length > $scope.maxNumberOfSamples) {
+            $scope.rssiSamples[transmitterTemp].shift();
+          }
+
+        }
+      }
+
+  }])
+
+  .directive('barChart',  function($parse, $window) {
+    return {
+      restrict: "EA",
+      template: "<svg width='300' height='500'></svg>",
+      link:
+        function(scope, elem, attrs) {
+
+          var chartDataExp = $parse(attrs.chartData);
+          var updateChartExp = $parse(attrs.updateChart);
+
+          var dataToPlot = chartDataExp(scope);
+          var padding = 20;
+          var xScale; // Dynamic
+          var yScale, xAxisGen, yAxisGen, lineFun; // Static
+          var d3 = $window.d3;
+          var rawSvg = elem.find('svg');
+          var svg = d3.select(rawSvg[0]);
+
+          var h = 440;
+          var w = 300;
+
+          var dataset = [ 165, 192, 42, 143, 164, 183, 200];
+
+          xScale = d3.scale.linear()
+              .domain([0,200])
+              .range([25, rawSvg.attr("width") - 15]);
+
+          xAxisGen = d3.svg.axis()
+              .scale(xScale)
+              .orient("bottom")
+              .ticks(5);
+
+          svg.append("svg:g")
+              .attr("class", "x axis")
+              .attr("transform","translate(0,450)")
+              .call(xAxisGen);
+
+          yScale = d3.scale.linear()
+              .range([rawSvg.attr("height") - 50, 10]);
+
+          yAxisGen = d3.svg.axis()
+              .scale(yScale)
+              .orient("left")
+              .ticks(0);
+
+          svg.append("svg:g")
+              .attr("class", "y axis")
+              .attr("transform", "translate(25,0)")
+              .call(yAxisGen);
+
+          svg.selectAll("rect")
+            .data(dataset)
+            .enter()
+            .append("rect")
+            .attr("x", 28)
+            .attr("y", function(d, i) {
+              return i * (h / dataset.length) + 10;
+            })
+            .attr("width", function(d) {
+              return d * 255/200;
+            })
+            .attr("height", w / dataset.length - 3)
+            .attr("fill", "#0770a2")
+            .on("click", click);
+
+          function click() {console.log("it worked!");}
+
+        }
+      }
   });
-
-
 
