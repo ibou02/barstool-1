@@ -13,7 +13,6 @@
   <body ng-app="state">
     <div ng-controller="InteractionCtrl">
 
-      <!----- Menu ----->
       <div id="menu">
         <ul>
           <li><a ng-click="selectTransmitter()" ng-class="tabclass.transmitter">Transmitter</a></li>
@@ -22,8 +21,6 @@
         </ul>
       </div>
 
-      <!----- D3 (Transmitter) ----->
- 
         <div ng-show="show.transmitter">
           <div ng-controller="ChartCtrl">
 
@@ -65,11 +62,11 @@
 		 
 		  <div style="padding:30px" linear-chart chart-data="rssiSamples" update-chart="updateChart"></div>
 
-          </dib>
+          </div>
         </div>
 
-      <!----- D3 (Receiver) ----->
-        <div ng-show="show.receiver">
+      <div ng-show="show.receiver">
+        <div ng-controller="BarCtrl">
           <form class="apiUrl">
             API Root: &nbsp;
             <input type="text" ng-model="apiRoot" size="30"/>
@@ -77,12 +74,11 @@
             <input type="text" ng-model="receiverId" size="16"/>
             <button ng-click="setReceiverUrl()">Update</button>
           </form>
-           
+          <div style="padding:30px" bar-chart chart-data= "displayData"></div>  
         </div>
 
       </div>
 
-      <!----- socket.io (Events) ----->
       <div ng-controller="SocketCtrl" ng-show="show.events">
         <form class="apiUrl">
           Socket URL:
