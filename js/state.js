@@ -4,7 +4,7 @@ WHEREIS_QUERY = '/whereis/transmitter/';
 WHATAT_QUERY = '/whatat/receiver/';
 DEFAULT_API_ROOT = 'http://www.hyperlocalcontext.com/';
 DEFAULT_TRANSMITTER_ID = '5c313e5234dc';
-DEFAULT_RECEIVER_ID = '001bc50940810016';
+DEFAULT_RECEIVER_ID = '001bc50940810074';
 DEFAULT_SOCKET_URL = DEFAULT_API_ROOT + '/websocket';
 DEFAULT_MAX_COLORS = 8;
 
@@ -454,6 +454,7 @@ angular.module('state', ['btford.socket-io'])
       // Data
       $scope.rssiSeconds = 0;
       $scope.rssiSamples = {};
+      $scope.displayData = {};
 
       // Meta-Data
       $scope.transmitters = {};
@@ -470,11 +471,26 @@ angular.module('state', ['btford.socket-io'])
 
       function updateFromService() {
         var sample = receiverSamples.getLatest();
-        console.log(JSON.stringify(sample, null, 4));
+        //console.log(JSON.stringify(sample, null, 4));
         updateTransmitters(sample);
-        console.log('Transmitters : ' + JSON.stringify($scope.transmitters, null, 4));
+        //console.log('Transmitters : ' + JSON.stringify($scope.transmitters, null, 4));
         updateRssiSamples(sample);
-        console.log('RssiSamples : ' + JSON.stringify($scope.rssiSamples, null, 4));
+        //console.log('RssiSamples : ' + JSON.stringify($scope.rssiSamples, null, 4));
+        updateDisplayData();
+        console.log('DisplayData : ' + JSON.stringify($scope.displayData, null, 4));
+
+      }
+
+      function updateDisplayData() {
+        for(var transmitterTemp in $scope.transmitters) {
+          if(!(transmitterTemp in $scope.displayData)) {
+            $scope.displayData[transmitterTemp];
+          }
+
+          var averageTemp = computeAverage(transmitterTemp);
+          var mostRecentTemp = $scope.rssiSamples[transmitterTemp][$scope.rssiSamples[transmitterTemp].length -1 ];
+          $scope.displayData[transmitterTemp] = {average : averageTemp, latest : mostRecentTemp, transmitter : transmitterTemp};
+        }
       }
 
       function updateTransmitters(sample) {
@@ -521,6 +537,18 @@ angular.module('state', ['btford.socket-io'])
         }
       }
 
+      function computeAverage(transmitterTemp) {
+        var sum = 0;
+        var num = 0;
+
+        for(var cRadio = 0; cRadio < $scope.rssiSamples[transmitterTemp].length; cRadio++) {
+          sum = sum + $scope.rssiSamples[transmitterTemp][cRadio];
+          num++;
+        }
+  
+        return Math.round(sum/num);
+      }
+
   }])
 
   .directive('barChart',  function($parse, $window) {
@@ -534,6 +562,7 @@ angular.module('state', ['btford.socket-io'])
           var updateChartExp = $parse(attrs.updateChart);
 
           var dataToPlot = chartDataExp(scope);
+          var sortedData = [];
           var padding = 20;
           var xScale; // Dynamic
           var yScale, xAxisGen, yAxisGen, lineFun; // Static
@@ -544,7 +573,27 @@ angular.module('state', ['btford.socket-io'])
           var h = 440;
           var w = 300;
 
-          var dataset = [ 165, 192, 42, 143, 164, 183, 200];
+          
+          scope.$watch(chartDataExp, function(newVal, oldVal) {
+
+            dataToPlot = newVal;
+            sortDataByAverage();
+            updateChart();
+
+            console.log('From the watch ! ' + JSON.stringify(sortedData, null, 4));
+          }, true);
+
+          function sortDataByAverage() {
+            sortedData = [];
+
+            for(var receiverTemp in dataToPlot) {
+              sortedData.push(dataToPlot[receiverTemp]);
+            }
+
+            sortedData.sort(function (a,b) {
+              return b.average - a.average;
+            });
+          }
 
           xScale = d3.scale.linear()
               .domain([0,200])
@@ -573,23 +622,60 @@ angular.module('state', ['btford.socket-io'])
               .attr("transform", "translate(25,0)")
               .call(yAxisGen);
 
-          svg.selectAll("rect")
-            .data(dataset)
+
+          function click() {console.log("it worked!");}
+
+          function updateChart() {
+
+            svg.selectAll("rect").remove();
+            svg.selectAll(".transmitter").remove();
+            
+            svg.selectAll("circle")
+            .data(sortedData)
             .enter()
             .append("rect")
             .attr("x", 28)
             .attr("y", function(d, i) {
-              return i * (h / dataset.length) + 10;
+              return i * (h / sortedData.length) + 10;
             })
             .attr("width", function(d) {
-              return d * 255/200;
+              return d.average * 255/200;
             })
-            .attr("height", w / dataset.length - 3)
+            .attr("height", (w / 2) / sortedData.length - 3)
             .attr("fill", "#0770a2")
             .on("click", click);
 
-          function click() {console.log("it worked!");}
+            
+            svg.selectAll("circle")
+            .data(sortedData)
+            .enter()
+            .append("rect")
+            .attr("x", 28)
+            .attr("y", function(d, i) {
+              return i * (h / sortedData.length) + 10 + (w / 2) / sortedData.length;
+            })
+            .attr("width", function(d) {
+              return d.latest * 255/200;
+            })
+            .attr("height", (w / 2) / sortedData.length - 3)
+            .attr("fill", "#ff6900")
+            .on("click", click);
+          
 
+            svg.selectAll("cirle")
+              .data(sortedData)
+              .enter()
+              .append("text")
+              .attr("class", "transmitter")
+              .text(function(d) {
+                return d.transmitter;
+              })
+              .attr("x", 28)
+              .attr("y", function(d, i) {
+              return i * (h / sortedData.length) + 10 + (w / 2) / sortedData.length;
+              });
+
+          }
         }
       }
   });
