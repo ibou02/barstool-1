@@ -1,4 +1,5 @@
 REFRESH_SECONDS = 1;
+HANDLING_ASYNC = 2;
 MAX_NUMBER_OF_EVENTS = 10;
 WHEREIS_QUERY = '/whereis/transmitter/';
 WHATAT_QUERY = '/whatat/receiver/';
@@ -7,14 +8,19 @@ DEFAULT_TRANSMITTER_ID = '5c313e5234dc';
 DEFAULT_RECEIVER_ID = '001bc50940810074';
 DEFAULT_SOCKET_URL = DEFAULT_API_ROOT + '/websocket';
 DEFAULT_MAX_COLORS = 8;
-
-
+ 
+ 
  
  
 angular.module('state', ['btford.socket-io'])
  
   // ----- Interaction controller -----
   .controller("InteractionCtrl", function($scope) {
+ 
+    //Used to communicate between tabs
+    $scope.updateReceiverFromTransmitter = false;
+    $scope.updateTransmitterFromReceiver = false;
+ 
     $scope.show = { transmitter: true, receiver: false, events: false };
     $scope.tabclass = { transmitter: 'selected-tab', receiver: 'tab',
                         events: 'tab' };
@@ -36,7 +42,7 @@ angular.module('state', ['btford.socket-io'])
       $scope.tabclass = { transmitter: 'tab', receiver: 'tab',
                           events: 'selected-tab' };
     }
-
+ 
   })
  
  
@@ -113,15 +119,15 @@ angular.module('state', ['btford.socket-io'])
       $scope.apiRoot = DEFAULT_API_ROOT;
       $scope.transmitterId = DEFAULT_TRANSMITTER_ID;
       //$scope.setReceiverUrl = setReceiverUrl;
-
+ 
       // Data
       $scope.rssiSeconds = 0;
       $scope.rssiSamples = {};
-
+ 
       // Meta-Data
       $scope.receivers = {};
       $scope.numReceivers = 0;
-
+ 
       // Accessible to the User. Display preference.
       $scope.isDiscovering = true;
       $scope.minRSSI = 125;
@@ -132,35 +138,35 @@ angular.module('state', ['btford.socket-io'])
  
       
       $interval(updateFromService , REFRESH_SECONDS * 1000);
-
+ 
       function updateFromService() {
    
         var sample = transmitterSamples.getLatest(); // Getting the latest data.
-
+ 
         if(sample && sample[$scope.transmitterId]) { // Making sure the data is well-defined
           
           if($scope.isDiscovering) { 
             updateReceivers(sample); // Updating the meta-data model.
           }
-
+ 
           updateRssiArray(sample); // Updating the data model.
           $scope.rssiSeconds += REFRESH_SECONDS; // Updating the data model.
-
+ 
         }
-
+ 
         if(!$scope.isPaused) {
           for(var receiverTemp in $scope.receivers) {
             var indexOfLatest = $scope.rssiSamples[receiverTemp].length -1;
             $scope.receivers[receiverTemp].latest = $scope.rssiSamples[receiverTemp][indexOfLatest].rssi;
           }
         }
-
+ 
       }
-
+ 
       $scope.updateFromUser = function () {
-
+ 
         $scope.updateChart = !$scope.updateChart;
-
+ 
         transmitterSamples.setUrl($scope.apiRoot + WHEREIS_QUERY + $scope.transmitterId);
         $scope.rssiSamples = {};
         $scope.receivers = {};
@@ -169,7 +175,7 @@ angular.module('state', ['btford.socket-io'])
       }
  
       function updateReceivers(sample) {
-
+ 
           for(var cRadio = 0; cRadio <  sample[$scope.transmitterId].radioDecodings.length; cRadio++) {
             var receiverTemp = sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value;
             if(!(receiverTemp in $scope.receivers)) {
@@ -191,7 +197,7 @@ angular.module('state', ['btford.socket-io'])
  
             if(sample[$scope.transmitterId].radioDecodings[cRadio].identifier.value === receiverTemp) {
               var rssi = sample[$scope.transmitterId].radioDecodings[cRadio].rssi;
-
+ 
               if($scope.rssiSamples[receiverTemp]) { // If already defined.
                 $scope.rssiSamples[receiverTemp].push({seconds : seconds, rssi : rssi });
               }
@@ -199,7 +205,7 @@ angular.module('state', ['btford.socket-io'])
                 $scope.rssiSamples[receiverTemp] = [];
                 $scope.rssiSamples[receiverTemp].push({seconds : seconds, rssi : rssi });
               }
-
+ 
               updated = true; 
               break;
             }
@@ -243,9 +249,9 @@ angular.module('state', ['btford.socket-io'])
       var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
       return (c);
     }
-
+ 
     $scope.updateFromUser();
-
+ 
   }])
  
  
@@ -256,10 +262,10 @@ angular.module('state', ['btford.socket-io'])
       template: "<svg width='1000' height='300'></svg>",
       link:
         function(scope, elem, attrs) {
-
+ 
           var chartDataExp = $parse(attrs.chartData);
           var updateChartExp = $parse(attrs.updateChart);
-
+ 
           var dataToPlot = chartDataExp(scope);
           var padding = 20;
           var xScale; // Dynamic
@@ -267,82 +273,82 @@ angular.module('state', ['btford.socket-io'])
           var d3 = $window.d3;
           var rawSvg = elem.find('svg');
           var svg = d3.select(rawSvg[0]);
-
-
+ 
+ 
           
           initChart(); // Initialize the chart once.
-
-
+ 
+ 
           // Update coming from the service. Affecting dynamic content.
           
           scope.$watch(chartDataExp, function(newVal, oldVal) {
-
+ 
             dataToPlot = newVal;
-
+ 
             if(!scope.isPaused) {
               dynamicUpdateChart();
               dynamicDrawReceivers();
             }
           }, true);
-
+ 
           // Update coming from the user. Affecting static content.
           
           scope.$watch(updateChartExp, function(newVal, oldVal) {
             staticUpDateChart();
           }, true);
           
-
-
+ 
+ 
           function initChart() { // Needs to be done once.
-
+ 
             xScale = d3.scale.linear()
               .domain([0,1])
               .range([padding + 5, rawSvg.attr("width") - padding]);
-
+ 
             yScale = d3.scale.linear()
               .domain([scope.minRSSI, scope.maxRSSI])
               .range([rawSvg.attr("height") - padding, 0]);
-
+ 
             xAxisGen = d3.svg.axis()
               .scale(xScale)
               .orient("bottom")
               .ticks(1);
-
+ 
             yAxisGen = d3.svg.axis()
               .scale(yScale)
               .orient("left")
               .ticks(8);
-
+ 
             lineFun = d3.svg.line()
               .x(function(d) { return xScale(d.seconds); })
               .y(function(d) { return yScale(d.rssi); })
               .interpolate("basis");
-
+ 
             svg.append("svg:g")
               .attr("class", "x axis")
               .attr("transform", "translate(9,270)")
               .call(xAxisGen);
-
+ 
             svg.append("svg:g")
               .attr("class", "y axis")
               .attr("transform", "translate(40,-10)")
               .call(yAxisGen);
-
+ 
           }
             
           function staticUpDateChart() {
-
+ 
             svg.selectAll("*").remove(); // Erasing the previous svg.
-
+ 
             yScale = d3.scale.linear()
               .domain([scope.minRSSI, scope.maxRSSI])
               .range([rawSvg.attr("height") - padding, 0]);
-
+ 
             yAxisGen = d3.svg.axis()
               .scale(yScale)
               .orient("left")
               .ticks(8);
-
+ 
             xAxisGen = d3.svg.axis()
               .scale(xScale)
               .orient("bottom")
@@ -352,40 +358,40 @@ angular.module('state', ['btford.socket-io'])
               .attr("class", "x axis")
               .attr("transform", "translate(9,270)")
               .call(xAxisGen);
-
+ 
             svg.append("svg:g")
               .attr("class", "y axis")
               .attr("transform", "translate(40,-10)")
               .call(yAxisGen);
           }  
-
+ 
           function dynamicUpdateChart() {
             var beginDomain = Math.max(1, scope.rssiSeconds - scope.maxNumberOfSamples);
             var endDomain = Math.max(1, scope.rssiSeconds - 1);
-
+ 
             xScale = d3.scale.linear()
               .domain([beginDomain,endDomain])
               .range([padding + 5, rawSvg.attr("width") - padding]);
-
+ 
             xAxisGen = d3.svg.axis()
               .scale(xScale)
               .orient("bottom")
               .ticks(Math.min(scope.maxNumberOfSamples, scope.rssiSeconds) - 1);
-
+ 
             svg.selectAll("g.x.axis").call(xAxisGen);
           }
-
-
+ 
+ 
           function dynamicDrawReceivers() {
-
+ 
             for(var receiverTemp in scope.receivers) {
-
+ 
               var isDisplayed = scope.receivers[receiverTemp].isDisplayed;
               var color = scope.receivers[receiverTemp].color;
               var isDrawn = scope.receivers[receiverTemp].isDrawn;
-
+ 
               if(isDisplayed) {
-
+ 
                 if(isDrawn) {
                   svg.selectAll("." + 'path_' + receiverTemp)
                     .attr({ d: lineFun(dataToPlot[receiverTemp]) }); 
@@ -401,9 +407,9 @@ angular.module('state', ['btford.socket-io'])
                   scope.receivers[receiverTemp].isDrawn = true;
                 }
               }
-
+ 
               else {
-
+ 
                 if(isDrawn) {
                   svg.selectAll("." + 'path_' + receiverTemp).remove();
                   scope.receivers[receiverTemp].isDrawn = false;
@@ -414,7 +420,7 @@ angular.module('state', ['btford.socket-io'])
         }
     }
   })
-
+ 
 // Samples service
   .service('receiverSamples', function($http, $interval) {
     var samples;
@@ -443,56 +449,68 @@ angular.module('state', ['btford.socket-io'])
       setUrl: function(newUrl) { url = newUrl; }
     };
   })
-
+ 
   .controller('BarCtrl', ['$scope','$interval', 'receiverSamples', 
                           function($scope, $interval, receiverSamples) {
       // Context
       $scope.apiRoot = DEFAULT_API_ROOT;
       $scope.receiverId = DEFAULT_RECEIVER_ID;
       //$scope.setReceiverUrl = setReceiverUrl;
-
+ 
       // Data
       $scope.rssiSeconds = 0;
       $scope.rssiSamples = {};
       $scope.displayData = {};
-
+ 
       // Meta-Data
       $scope.transmitters = {};
       $scope.numTransmitters= 0;
-
+ 
       // Accessible to the User. Display preference.
       $scope.isDiscovering = true;
       $scope.isPaused = false;
+      $scope.maxNumberOfSamplesAccessible = 10;
       $scope.maxNumberOfSamples = 10;
       $scope.updateChart = true; // Each time this value changes, the chart is being updated.
       receiverSamples.setUrl($scope.apiRoot + WHATAT_QUERY + $scope.receiverId);
       
       $interval(updateFromService , REFRESH_SECONDS * 1000);
-
+ 
       function updateFromService() {
+ 
         var sample = receiverSamples.getLatest();
-        //console.log(JSON.stringify(sample, null, 4));
-        updateTransmitters(sample);
-        //console.log('Transmitters : ' + JSON.stringify($scope.transmitters, null, 4));
+ 
+        if($scope.isDiscovering) {
+          updateTransmitters(sample);
+        }
         updateRssiSamples(sample);
-        //console.log('RssiSamples : ' + JSON.stringify($scope.rssiSamples, null, 4));
+        console.log(JSON.stringify($scope.rssiSamples, null, 4));
         updateDisplayData();
-        console.log('DisplayData : ' + JSON.stringify($scope.displayData, null, 4));
-
+ 
       }
-
+ 
+      $scope.updateFromUser = function () {
+        $scope.updateChart = !$scope.updateChart;
+        receiverSamples.setUrl($scope.apiRoot + WHATAT_QUERY + $scope.receiverId);
+        $scope.rssiSamples = {};
+        $scope.displayData = {};
+        $scope.transmitters = {};
+        $scope.maxNumberOfSamples = $scope.maxNumberOfSamplesAccessible;
+        
+      }
+ 
       function updateDisplayData() {
         for(var transmitterTemp in $scope.transmitters) {
           if(!(transmitterTemp in $scope.displayData)) {
             $scope.displayData[transmitterTemp];
           }
-
+ 
           var averageTemp = computeAverage(transmitterTemp);
           var mostRecentTemp = $scope.rssiSamples[transmitterTemp][$scope.rssiSamples[transmitterTemp].length -1 ];
           $scope.displayData[transmitterTemp] = {average : averageTemp, latest : mostRecentTemp, transmitter : transmitterTemp};
         }
       }
-
+ 
       function updateTransmitters(sample) {
         for(var transmitterTemp in sample) {
           if(!(transmitterTemp in $scope.transmitters)) {
@@ -501,12 +519,12 @@ angular.module('state', ['btford.socket-io'])
           }
         }
       }
-
+ 
       function updateRssiSamples(sample) {
         
         for(var transmitterTemp in $scope.transmitters) {
-
-
+ 
+ 
           if(!(transmitterTemp in $scope.rssiSamples)) {
             console.log('Creating new transmitter rssiSamples!');
             $scope.rssiSamples[transmitterTemp];
@@ -529,18 +547,18 @@ angular.module('state', ['btford.socket-io'])
             console.log('In up!')
             $scope.rssiSamples[transmitterTemp].push(0);
           }
-
+ 
           if($scope.rssiSamples[transmitterTemp].length > $scope.maxNumberOfSamples) {
             $scope.rssiSamples[transmitterTemp].shift();
           }
-
+ 
         }
       }
-
+ 
       function computeAverage(transmitterTemp) {
         var sum = 0;
         var num = 0;
-
+ 
         for(var cRadio = 0; cRadio < $scope.rssiSamples[transmitterTemp].length; cRadio++) {
           sum = sum + $scope.rssiSamples[transmitterTemp][cRadio];
           num++;
@@ -548,19 +566,19 @@ angular.module('state', ['btford.socket-io'])
   
         return Math.round(sum/num);
       }
-
+ 
   }])
-
+ 
   .directive('barChart',  function($parse, $window) {
     return {
       restrict: "EA",
-      template: "<svg width='300' height='500'></svg>",
+      template: "<svg width='450' height='450'></svg>",
       link:
         function(scope, elem, attrs) {
-
+ 
           var chartDataExp = $parse(attrs.chartData);
           var updateChartExp = $parse(attrs.updateChart);
-
+ 
           var dataToPlot = chartDataExp(scope);
           var sortedData = [];
           var padding = 20;
@@ -569,99 +587,115 @@ angular.module('state', ['btford.socket-io'])
           var d3 = $window.d3;
           var rawSvg = elem.find('svg');
           var svg = d3.select(rawSvg[0]);
-
-          var h = 440;
-          var w = 300;
-
-          
+ 
+          var h = 430;
+          var w = 330;
+          var offset = 120;
+ 
+          initChart();
+ 
           scope.$watch(chartDataExp, function(newVal, oldVal) {
-
+ 
             dataToPlot = newVal;
             sortDataByAverage();
-            updateChart();
-
-            console.log('From the watch ! ' + JSON.stringify(sortedData, null, 4));
-          }, true);
-
-          function sortDataByAverage() {
-            sortedData = [];
-
-            for(var receiverTemp in dataToPlot) {
-              sortedData.push(dataToPlot[receiverTemp]);
+ 
+            if(!(scope.isPaused)) {
+              updateChart();
             }
-
-            sortedData.sort(function (a,b) {
-              return b.average - a.average;
-            });
-          }
-
-          xScale = d3.scale.linear()
-              .domain([0,200])
-              .range([25, rawSvg.attr("width") - 15]);
-
-          xAxisGen = d3.svg.axis()
-              .scale(xScale)
-              .orient("bottom")
-              .ticks(5);
-
-          svg.append("svg:g")
-              .attr("class", "x axis")
-              .attr("transform","translate(0,450)")
-              .call(xAxisGen);
-
-          yScale = d3.scale.linear()
-              .range([rawSvg.attr("height") - 50, 10]);
-
-          yAxisGen = d3.svg.axis()
-              .scale(yScale)
-              .orient("left")
-              .ticks(0);
-
-          svg.append("svg:g")
-              .attr("class", "y axis")
-              .attr("transform", "translate(25,0)")
-              .call(yAxisGen);
-
-
-          function click() {console.log("it worked!");}
-
-          function updateChart() {
-
+ 
+          }, true);
+ 
+          scope.$watch(updateChartExp, function(newVal, oldVal) {
+ 
+            resetData();
+            
+          }, true);
+ 
+ 
+          function resetData() {
             svg.selectAll("rect").remove();
             svg.selectAll(".transmitter").remove();
-            
+            sortedData = [];
+            dataToPlot = {};
+          }
+ 
+ 
+          function initChart() {
+            xScale = d3.scale.linear()
+                .domain([0,200])
+                .range([25, w - 15]);
+ 
+            xAxisGen = d3.svg.axis()
+                .scale(xScale)
+                .orient("bottom")
+                .ticks(5);
+ 
+            svg.append("svg:g")
+                .attr("class", "x axis")
+                .attr("transform","translate(120,420)")
+                .call(xAxisGen);
+ 
+            yScale = d3.scale.linear()
+                .range([h - 10, 0]);
+ 
+            yAxisGen = d3.svg.axis()
+                .scale(yScale)
+                .orient("left")
+                .ticks(0);
+ 
+            svg.append("svg:g")
+                .attr("class", "y axis")
+                .attr("transform", "translate(145,0)")
+                .call(yAxisGen);
+            }
+ 
+      
+          function updateChart() {
+ 
+            console.log(JSON.stringify(scope.transmitter, null, 4));
+            console.log(JSON.stringify(sortedData, null, 4));
+ 
+            svg.selectAll("rect").remove();
+            svg.selectAll(".transmitter").remove();
+ 
             svg.selectAll("circle")
             .data(sortedData)
             .enter()
             .append("rect")
-            .attr("x", 28)
+            .attr("x", 144)
             .attr("y", function(d, i) {
-              return i * (h / sortedData.length) + 10;
+              return i * (h / sortedData.length) + 2;
             })
             .attr("width", function(d) {
               return d.average * 255/200;
             })
             .attr("height", (w / 2) / sortedData.length - 3)
             .attr("fill", "#0770a2")
-            .on("click", click);
-
+            .on('click',scope.selectTransmitter)
+            .append("svg:title")
+            .text(function (d) { return d.average; });
+            
+ 
             
             svg.selectAll("circle")
             .data(sortedData)
             .enter()
             .append("rect")
-            .attr("x", 28)
+            .attr("x", 144)
             .attr("y", function(d, i) {
-              return i * (h / sortedData.length) + 10 + (w / 2) / sortedData.length;
+              return i * (h / sortedData.length)  + (w / 2) / sortedData.length + 2;
             })
             .attr("width", function(d) {
               return d.latest * 255/200;
             })
             .attr("height", (w / 2) / sortedData.length - 3)
             .attr("fill", "#ff6900")
-            .on("click", click);
+            .on('click',scope.selectTransmitter)
+            .append("svg:title")
+            .text(function (d) { return d.latest; });
+            
+            
           
-
             svg.selectAll("cirle")
               .data(sortedData)
               .enter()
@@ -670,13 +704,24 @@ angular.module('state', ['btford.socket-io'])
               .text(function(d) {
                 return d.transmitter;
               })
-              .attr("x", 28)
+              .attr("x", 5)
               .attr("y", function(d, i) {
-              return i * (h / sortedData.length) + 10 + (w / 2) / sortedData.length;
+              return i * (h / sortedData.length)  + (w / 2) / sortedData.length;
               });
-
+ 
+          }
+ 
+          function sortDataByAverage() {
+            sortedData = [];
+ 
+            for(var receiverTemp in dataToPlot) {
+              sortedData.push(dataToPlot[receiverTemp]);
+            }
+ 
+            sortedData.sort(function (a,b) {
+              return b.average - a.average;
+            });
           }
         }
       }
   });
-
