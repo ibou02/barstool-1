@@ -72,9 +72,20 @@
             <input type="text" ng-model="apiRoot" size="30"/>
             &nbsp; Receiver ID: &nbsp;
             <input type="text" ng-model="receiverId" size="16"/>
-            <button ng-click="setReceiverUrl()">Update</button>
+            <button ng-click="updateFromUser()">Update</button>
+            <p>
+              <button ng-click="isPaused = !isPaused">
+                Pause {{isPaused? 'on' : 'off'}}
+              </button>
+              <button ng-click="isDiscovering = !isDiscovering">
+                Discover Receivers {{isDiscovering? 'on' : 'off'}}
+              </button>
+              Averaging over past <input type="text" ng-model="maxNumberOfSamplesAccessible" size="2"/> data points.
+            </p>
+            <p> Listening on {{receiverId}} </p> 
+
           </form>
-          <div style="padding:30px" bar-chart chart-data= "displayData"></div>  
+          <div style="padding:30px" bar-chart chart-data= "displayData" update-chart="updateChart"></div>  
         </div>
 
       </div>
