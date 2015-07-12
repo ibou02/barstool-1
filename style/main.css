@@ -1,6 +1,13 @@
 body {
-  font-family: Source Sans Pro;
+ font-family: 'Open Sans', sans-serif;
   margin: 0;
+}
+
+header {
+text-align: center;
+font-size: 33px;
+background-color: none;
+height: 50px;
 }
 
 a {
@@ -60,12 +67,6 @@ h1 {
   margin: 1em 0;
 }
 
-#menu {
-  width: 100%;
-  overflow: hidden;
-  min-width: 480px;
-  background-color: #999999;
-}
 
 #footer {
   clear: both;

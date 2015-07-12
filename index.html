@@ -5,95 +5,99 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.13/angular.min.js"></script>
     <script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+    <script src="http://angular-ui.github.io/bootstrap/ui-bootstrap-tpls-0.13.0.js"></script>
     <script type="text/javascript" src="js/socket.js"></script>
     <script type="text/javascript" src="js/state.js"></script>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style/main.css"/>
   </head>
 
   <body ng-app="state">
+  <header>reelyActive Barstool</header>
+
+  
+     
     <div ng-controller="InteractionCtrl">
 
-      <div id="menu">
-        <ul>
-          <li><a ng-click="selectTransmitter()" ng-class="tabclass.transmitter">Transmitter</a></li>
-          <li><a ng-click="selectReceiver()" ng-class="tabclass.receiver">Receiver</a></li>
-          <li><a ng-click="selectEvents()" ng-class="tabclass.events">Events</a></li>
-        </ul>
-      </div>
+      <tabset justified="true">
 
-        <div ng-show="show.transmitter">
+        <tab heading="Transmitter">
+        
           <div ng-controller="ChartCtrl">
 
-		  <form class="apiUrl">
-		    API Root: &nbsp;
-		    <input type="text" ng-model="apiRoot" size="30"/>
-		    &nbsp; Transmitter ID: &nbsp;
-		    <input type="text" ng-model="transmitterId" size="16"/>
-		    From Min rssi of 
-		    <input type="text" ng-model="minRSSI" size="16" />
-		    to Max rssi of
-		    <input type="text" ng-model="maxRSSI" size="16" />
-		    <button ng-click="updateFromUser()">Update</button>
-	                    
-                    <p> Max number of samples : <input type="text" ng-model="maxNumberOfSamples" size="16"/> </p>
-		  </form>
-		  <h1>RSSI in Time</h1>
-		  <p> Tracking {{transmitterId}} </p> 
+      <form class="apiUrl">
+        API Root: &nbsp;
+        <input type="text" ng-model="apiRoot" style="width:30%" class="form-control"/>
+        &nbsp; Transmitter ID: &nbsp;
+        <input type="text" ng-model="transmitterId" style="width:30%"  class="form-control"/>
+        From Min rssi of 
+        <input type="text" ng-model="minRSSI" style="width:30%"   class="form-control"/>
+        to Max rssi of
+        <input type="text" ng-model="maxRSSI" style="width:30%"  class="form-control"/>
+        <button ng-click="updateFromUser()" class="btn btn-primary">Update</button>
+                      
+                    <p> Max number of samples : <input type="text" ng-model="maxNumberOfSamples" style="width:30%"  class="form-control"/> </p>
+      </form>
+      <h1>RSSI in Time</h1>
+      <p> Tracking {{transmitterId}} </p> 
 
 
-		  <p>With the following receivers</p>
-		  <ul>
-		    <li data-ng-repeat="x in receivers">
-			<button style ="background-color:{{x.color}}"  ng-click="x.isDisplayed = !x.isDisplayed">
-			{{ x.receiverId }}_{{x.latest}}_ {{x.isDisplayed? 'show':'hide' }}
-			</button>
+      <p>With the following receivers</p>
+      <ul>
+        <li data-ng-repeat="x in receivers">
+      <button style ="background-color:{{x.color}}" class="btn btn"  ng-click="x.isDisplayed = !x.isDisplayed">
+      {{ x.receiverId }}_{{x.latest}}_ {{x.isDisplayed? 'show':'hide' }}
+      </button>
 
-		    </li>
-		    <button ng-click="isDiscovering = !isDiscovering">
-		    Discover Receivers {{isDiscovering? 'on' : 'off'}}
-		    </button>
+        </li>
+        <button ng-click="isDiscovering = !isDiscovering" class="btn btn-primary" >
+        Discover Receivers {{isDiscovering? 'on' : 'off'}}
+        </button>
 
-		    <button ng-click="isPaused = !isPaused">
-		    Pause {{isPaused? 'on' : 'off'}}
-		    </button>
+        <button ng-click="isPaused = !isPaused" class="btn btn-primary">
+        Pause {{isPaused? 'on' : 'off'}}
+        </button>
 
-		  </ul>
+      </ul>
 
-		 
-		  <div style="padding:30px" linear-chart chart-data="rssiSamples" update-chart="updateChart"></div>
+     
+      <div style="padding:30px" linear-chart chart-data="rssiSamples" update-chart="updateChart"></div>
 
           </div>
-        </div>
+        </tab>
 
-      <div ng-show="show.receiver">
+
+      <tab heading="Receiver">
         <div ng-controller="BarCtrl">
           <form class="apiUrl">
             API Root: &nbsp;
-            <input type="text" ng-model="apiRoot" size="30"/>
+            <input type="text" ng-model="apiRoot" style="width:30%" class="form-control"/>
             &nbsp; Receiver ID: &nbsp;
-            <input type="text" ng-model="receiverId" size="16"/>
-            <button ng-click="updateFromUser()">Update</button>
+            <input type="text" ng-model="receiverId" style="width:30%"  class="form-control"/>
+            <button ng-click="updateFromUser()" class="btn btn-primary">Update</button>
             <p>
-              <button ng-click="isPaused = !isPaused">
+              <button ng-click="isPaused = !isPaused" class="btn btn-primary">
                 Pause {{isPaused? 'on' : 'off'}}
               </button>
-              <button ng-click="isDiscovering = !isDiscovering">
+              <button ng-click="isDiscovering = !isDiscovering" class="btn btn-primary">
                 Discover Receivers {{isDiscovering? 'on' : 'off'}}
               </button>
-              Averaging over past <input type="text" ng-model="maxNumberOfSamplesAccessible" size="2"/> data points.
+              Averaging over past <input type="text" ng-model="maxNumberOfSamplesAccessible" style="width:30%"  class="form-control"/> data points.
             </p>
             <p> Listening on {{receiverId}} </p> 
 
           </form>
           <div style="padding:30px" bar-chart chart-data= "displayData" update-chart="updateChart"></div>  
-        </div>
-
       </div>
+      </tab>
 
-      <div ng-controller="SocketCtrl" ng-show="show.events">
+       <tab heading="Event">
+
+        <div ng-controller="SocketCtrl" >
         <form class="apiUrl">
           Socket URL:
-          <input type="text" ng-model="socket.url" size="50" readonly/>
+          <input type="text" ng-model="socket.url" style="width:30%"  class="form-control" readonly/>
         </form>
         <div ng-repeat="(id, event) in events">
           <div>
@@ -101,7 +105,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </tab>
+    </tabset>
+     </div>
+
     <footer id="footer">
       <a href="https://github.com/reelyactive/barstool"> barstool </a>
       &nbsp; | &nbsp;
