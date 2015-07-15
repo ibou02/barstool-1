@@ -27,41 +27,13 @@ li {
   display: inline;
 }
 
-li a {
-  float: left;
-  width: 13%;
-  min-width: 6em;
-  padding: 1%;
-  border-right: 1px solid white;
-  background-color:#5a5a5a;
-  font-size: 1.4em;
-  color:white;
-}
+
 
 h1 {
   padding-bottom: 0.1em;
 }
 
-.selected-tab
-{
-  color: #ffffff; 
-  background-color: #0770a2;
-  font-weight: 600;
-}
 
-.selected-tab:hover {
-  background-color: #ff6900;
-}
-
-.tab
-{
-  color: #ffffff; 
-  background-color: #5a5a5a;
-}
-
-.tab:hover {
-  background-color: #ff6900;
-}
 
 .apiUrl {
   margin: 1em 0;

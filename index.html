@@ -32,9 +32,8 @@
         &nbsp; Transmitter ID: &nbsp;
         <input type="text" ng-model="transmitterId" style="width:30%"  class="form-control"/>
         From Min rssi of 
-        <input type="text" ng-model="minRSSI" style="width:30%"   class="form-control"/>
-        to Max rssi of
-        <input type="text" ng-model="maxRSSI" style="width:30%"  class="form-control"/>
+        <div range-slider min="0" max="200" ng-min="minRSSI" ng-max="maxRSSI"></div>
+
         <button ng-click="updateFromUser()" class="btn btn-primary">Update</button>
                       
                     <p> Max number of samples : <input type="text" ng-model="maxNumberOfSamples" style="width:30%"  class="form-control"/> </p>

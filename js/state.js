@@ -12,37 +12,12 @@ DEFAULT_MAX_COLORS = 8;
  
  
  
-angular.module('state', ['btford.socket-io'])
+angular.module('state', ['ui.bootstrap','btford.socket-io'])
  
   // ----- Interaction controller -----
   .controller("InteractionCtrl", function($scope) {
- 
-    //Used to communicate between tabs
-    $scope.updateReceiverFromTransmitter = false;
-    $scope.updateTransmitterFromReceiver = false;
- 
-    $scope.show = { transmitter: true, receiver: false, events: false };
-    $scope.tabclass = { transmitter: 'selected-tab', receiver: 'tab',
-                        events: 'tab' };
- 
-    $scope.selectTransmitter = function() {
-      $scope.show = { transmitter: true, receiver: false, events: false };
-      $scope.tabclass = { transmitter: 'selected-tab', receiver: 'tab',
-                          events: 'tab' };
-    }
- 
-    $scope.selectReceiver = function() {
-      $scope.show = { transmitter: false, receiver: true, events: false };
-      $scope.tabclass = { transmitter: 'tab', receiver: 'selected-tab', 
-                          events: 'tab'};
-    }
- 
-    $scope.selectEvents = function() {
-      $scope.show = { transmitter: false, receiver: false, events: true };
-      $scope.tabclass = { transmitter: 'tab', receiver: 'tab',
-                          events: 'selected-tab' };
-    }
- 
+   
+   
   })
  
  
